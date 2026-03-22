@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STRICT BUDGET</title>
+  <link rel="stylesheet" href="style.css">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ==================== ONBOARDING ==================== -->
+    <div id="onboarding" class="onboarding hidden">
+      <!-- Welcome -->
+      <div id="onboard-welcome" class="onboarding-step">
+        <div class="step-dots">
+          <div class="step-dot active"></div>
+          <div class="step-dot"></div>
+          <div class="step-dot"></div>
+          <div class="step-dot"></div>
+        </div>
+        <div class="onboarding-icon">&#128176;</div>
+        <h1>STRICT BUDGET</h1>
+        <p class="subtitle">You have less money than you think.</p>
+        <p class="onboarding-desc">This app locks away part of your income as if it doesn't exist. It strictly tracks your spending, holds you accountable, and builds real savings over time.</p>
+        <button id="onboard-start-btn" class="btn btn-primary">Let's Set Up</button>
+      </div>
+
+      <!-- Step 1: Bank Balance -->
+      <div id="onboard-step1" class="onboarding-step hidden">
+        <div class="step-dots">
+          <div class="step-dot done"></div>
+          <div class="step-dot active"></div>
+          <div class="step-dot"></div>
+          <div class="step-dot"></div>
+        </div>
+        <h2>How much is in your bank?</h2>
+        <p class="hint">Be honest. This is your starting point. We need to know what you're working with right now.</p>
+        <div class="input-group">
+          <span class="input-prefix">$</span>
+          <input type="number" id="onboard-bank" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <button id="onboard-next1" class="btn btn-primary">Next</button>
+      </div>
+
+      <!-- Step 2: Extra Money -->
+      <div id="onboard-step2" class="onboarding-step hidden">
+        <div class="step-dots">
+          <div class="step-dot done"></div>
+          <div class="step-dot done"></div>
+          <div class="step-dot active"></div>
+          <div class="step-dot"></div>
+        </div>
+        <h2>Any extra money?</h2>
+        <p class="hint">Side hustle, cash on hand, gifts — anything outside your bank? If none, leave it at 0.</p>
+        <div class="input-group">
+          <span class="input-prefix">$</span>
+          <input type="number" id="onboard-extra" placeholder="0.00" min="0" step="0.01" value="0">
+        </div>
+        <button id="onboard-next2" class="btn btn-primary">Next</button>
+      </div>
+
+      <!-- Step 3: Payday & Income -->
+      <div id="onboard-step3" class="onboarding-step hidden">
+        <div class="step-dots">
+          <div class="step-dot done"></div>
+          <div class="step-dot done"></div>
+          <div class="step-dot done"></div>
+          <div class="step-dot active"></div>
+        </div>
+        <h2>When do you get paid?</h2>
+        <p class="hint">Set your next payday. The app will remember your pay schedule from here.</p>
+        <label class="input-label">Next Payday</label>
+        <input type="date" id="onboard-payday">
+        <label class="input-label">Paycheck Amount</label>
+        <div class="input-group">
+          <span class="input-prefix">$</span>
+          <input type="number" id="onboard-income" placeholder="0.00" min="0.01" step="0.01">
+        </div>
+        <label class="input-label">Pay Frequency</label>
+        <select id="onboard-frequency" class="select-input">
+          <option value="14">Every 2 weeks</option>
+          <option value="7">Weekly</option>
+          <option value="30">Monthly</option>
+        </select>
+        <button id="onboard-next3" class="btn btn-primary">See My Plan</button>
+      </div>
+
+      <!-- Step 4: Recommendation -->
+      <div id="onboard-step4" class="onboarding-step hidden">
+        <h2>Here's Your Plan</h2>
+        <div id="onboard-recommendation" class="card">
+          <!-- Filled by JS -->
+        </div>
+        <label class="input-label" style="margin-top:1rem">Recommended Lock Percentage</label>
+        <div class="slider-group">
+          <input type="range" id="onboard-lock-slider" min="5" max="50" value="20" class="slider">
+          <span id="onboard-lock-display" class="slider-value">20%</span>
+        </div>
+        <button id="onboard-finish-btn" class="btn btn-primary">Start Budgeting</button>
+      </div>
+    </div>
+
+    <!-- ==================== MAIN APP ==================== -->
+    <div id="main-app" class="hidden">
+      <header id="header">
+        <h1>STRICT BUDGET</h1>
+        <div class="date-bar">
+          <span class="current-date" id="current-date"></span>
+          <span class="next-payday" id="next-payday-display"></span>
+        </div>
+      </header>
+
+      <!-- Tab Navigation -->
+      <nav id="tab-nav" class="tab-nav hidden">
+        <button class="tab-btn active" data-tab="main">Budget</button>
+        <button class="tab-btn" data-tab="bills">Bills</button>
+        <button class="tab-btn" data-tab="savings">Savings</button>
+      </nav>
+
+      <!-- ==================== MAIN TAB ==================== -->
+      <div id="tab-main" class="tab-content">
+
+        <!-- Income & Lock Settings -->
+        <section id="income-settings" class="card hidden">
+          <div class="settings-header">
+            <h2>Income & Lock</h2>
+            <button id="edit-income-btn" class="btn btn-small btn-secondary">Edit</button>
+          </div>
+          <div id="income-display">
+            <div class="income-row">
+              <span class="label">Paycheck</span>
+              <span id="display-income" class="value">$0.00</span>
+            </div>
+            <div class="income-row">
+              <span class="label">Locked Away</span>
+              <span id="display-locked" class="value locked-value">$0.00</span>
+            </div>
+            <div class="income-row">
+              <span class="label">Next Payday</span>
+              <span id="display-next-payday" class="value" style="color:var(--accent-amber)"></span>
+            </div>
+          </div>
+          <form id="edit-income-form" class="hidden">
+            <label class="input-label">Paycheck Amount</label>
+            <div class="input-group">
+              <span class="input-prefix">$</span>
+              <input type="number" id="edit-income-input" placeholder="0.00" min="0.01" step="0.01" required>
+            </div>
+            <label class="input-label">Lock Percentage</label>
+            <div class="slider-group">
+              <input type="range" id="edit-lock-slider" min="5" max="50" value="20" class="slider">
+              <span id="edit-lock-display" class="slider-value">20%</span>
+            </div>
+            <label class="input-label">Next Payday</label>
+            <input type="date" id="edit-payday-input">
+            <label class="input-label">Pay Cycle Length</label>
+            <select id="edit-frequency" class="select-input">
+              <option value="7">Weekly</option>
+              <option value="14">Every 2 weeks</option>
+              <option value="30">Monthly</option>
+            </select>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-small">Save Changes</button>
+              <button type="button" id="cancel-edit-income" class="btn btn-secondary btn-small">Cancel</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Pre-Cycle View (waiting for payday) -->
+        <section id="pre-cycle-section" class="card hidden">
+          <div class="pre-cycle-view">
+            <h2>Waiting for Payday</h2>
+            <div class="pre-cycle-countdown" id="pre-cycle-days">0</div>
+            <div class="pre-cycle-label">days until payday</div>
+            <div class="pre-cycle-budget">
+              <span class="daily-label">Recommended Daily Spend</span>
+              <span class="daily-amount" id="pre-cycle-daily">$0.00</span>
+            </div>
+            <div class="income-row">
+              <span class="label">Available Now</span>
+              <span id="pre-cycle-available" class="value" style="color:var(--accent-green)">$0.00</span>
+            </div>
+            <p class="hint" style="margin-top:0.75rem;text-align:center">Don't blow through this before payday. Be strict with yourself.</p>
+            <button id="pre-cycle-paid-btn" class="btn btn-secondary" style="margin-top:0.5rem">I Got Paid Early</button>
+          </div>
+        </section>
+
+        <!-- Cycle Status -->
+        <section id="cycle-status" class="card hidden">
+          <div class="status-row">
+            <div class="days-remaining">
+              <span id="days-count">14</span>
+              <span class="days-label">days left</span>
+            </div>
+            <div class="balance-display">
+              <span class="balance-label">Spendable</span>
+              <span id="spendable-amount" class="balance-amount">$0.00</span>
+            </div>
+          </div>
+          <div id="day-progress" class="day-progress"></div>
+          <div class="savings-indicator">
+            <span id="hidden-savings">$0.00 locked away (untouchable)</span>
+          </div>
+        </section>
+
+        <!-- Budget Categories -->
+        <section id="categories-section" class="card hidden">
+          <h2>Budget Breakdown</h2>
+          <div class="categories-grid">
+            <div class="category-card needs">
+              <div class="category-header">
+                <span class="category-icon">&#9679;</span>
+                <span class="category-name">Needs</span>
+              </div>
+              <span id="needs-amount" class="category-amount">$0.00</span>
+              <span id="needs-spent" class="category-spent">$0.00 spent</span>
+              <div class="category-bar"><div id="needs-bar-fill" class="category-bar-fill needs-fill"></div></div>
+            </div>
+            <div class="category-card wants">
+              <div class="category-header">
+                <span class="category-icon">&#9679;</span>
+                <span class="category-name">Wants</span>
+              </div>
+              <span id="wants-amount" class="category-amount">$0.00</span>
+              <span id="wants-spent" class="category-spent">$0.00 spent</span>
+              <div class="category-bar"><div id="wants-bar-fill" class="category-bar-fill wants-fill"></div></div>
+            </div>
+            <div class="category-card savings-cat" id="savings-cat-card">
+              <div class="category-header">
+                <span class="category-icon">&#9679;</span>
+                <span class="category-name">Savings</span>
+              </div>
+              <span id="savings-cat-amount" class="category-amount">$0.00</span>
+              <span id="savings-cat-spent" class="category-spent">$0.00 allocated</span>
+              <div class="category-bar"><div id="savings-bar-fill" class="category-bar-fill savings-fill"></div></div>
+              <div id="savings-pie-tooltip" class="savings-pie-tooltip">
+                <canvas id="savings-pie-canvas" width="140" height="140"></canvas>
+                <div id="savings-pie-legend"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Main Area -->
+        <section id="main-area" class="card">
+          <!-- State A: No active cycle -->
+          <div id="start-cycle-view">
+            <h2>Start a New Cycle</h2>
+            <p class="hint">Enter your paycheck amount. Choose how much to lock away — that money won't exist to you.</p>
+            <form id="income-form">
+              <label class="input-label">Paycheck Amount</label>
+              <div class="input-group">
+                <span class="input-prefix">$</span>
+                <input type="number" id="income-input" placeholder="0.00" min="0.01" step="0.01" required>
+              </div>
+              <label class="input-label">Lock Percentage</label>
+              <div class="slider-group">
+                <input type="range" id="lock-slider" min="5" max="50" value="20" class="slider">
+                <span id="lock-display" class="slider-value">20%</span>
+              </div>
+              <div id="lock-preview" class="lock-preview">
+                <span>Locked: <strong id="preview-locked">$0.00</strong></span>
+                <span>Spendable: <strong id="preview-spendable">$0.00</strong></span>
+              </div>
+              <button type="submit" class="btn btn-primary">Lock It In</button>
+            </form>
+          </div>
+
+          <!-- State B: Active cycle -->
+          <div id="active-cycle-view" class="hidden">
+            <div class="settings-header">
+              <h2>Log an Expense</h2>
+              <button id="add-bonus-btn" class="btn btn-small btn-secondary">+ Extra Money</button>
+            </div>
+            <form id="expense-form">
+              <div class="input-group">
+                <span class="input-prefix">$</span>
+                <input type="number" id="expense-amount" placeholder="0.00" min="0.01" step="0.01" required>
+              </div>
+              <input type="text" id="expense-desc" placeholder="What was it for?" maxlength="100" required>
+              <div class="category-select">
+                <label class="radio-label">
+                  <input type="radio" name="expense-cat" value="needs" checked>
+                  <span class="radio-pill needs-pill">Needs</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" name="expense-cat" value="wants">
+                  <span class="radio-pill wants-pill">Wants</span>
+                </label>
+              </div>
+              <button type="submit" class="btn btn-primary">Log Expense</button>
+            </form>
+            <div id="expense-log">
+              <h3>Expenses</h3>
+              <div id="expense-list"></div>
+              <p id="no-expenses" class="hint">No expenses yet. Keep it that way.</p>
+            </div>
+          </div>
+
+          <!-- State C: Report -->
+          <div id="report-view" class="hidden">
+            <h2>Cycle Complete</h2>
+            <div id="report-card"></div>
+
+            <!-- Locked Savings Vault -->
+            <div id="locked-savings-section" class="card" style="margin-top:1rem">
+              <h3 style="margin-top:0">Your Locked Savings Vault</h3>
+              <div id="locked-savings-display"></div>
+              <div id="locked-savings-actions" class="locked-actions">
+                <button id="keep-locked-btn" class="btn btn-primary">Keep it Locked</button>
+                <button id="cash-in-btn" class="btn btn-secondary">Cash In</button>
+              </div>
+              <div id="cash-in-form" class="hidden" style="margin-top:0.75rem">
+                <label class="input-label">How much to cash in?</label>
+                <div class="input-group">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="cash-in-amount" placeholder="0.00" min="0.01" step="0.01">
+                </div>
+                <div class="form-actions">
+                  <button id="confirm-cash-in" class="btn btn-primary btn-small">Confirm Cash In</button>
+                  <button id="cancel-cash-in" class="btn btn-secondary btn-small">Cancel</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress Over Time -->
+            <div id="progress-section" class="card hidden" style="margin-top:1rem">
+              <h3 style="margin-top:0">Progress Over Time</h3>
+              <div id="progress-stats"></div>
+            </div>
+
+            <button id="new-cycle-btn" class="btn btn-primary" style="margin-top:1rem">Start Next Paycheck</button>
+          </div>
+        </section>
+
+        <!-- History -->
+        <section id="history-section" class="card hidden">
+          <h2>Past Cycles</h2>
+          <div id="history-list"></div>
+        </section>
+      </div>
+
+      <!-- ==================== BILLS TAB ==================== -->
+      <div id="tab-bills" class="tab-content hidden">
+        <section class="card">
+          <div class="goals-header">
+            <h2>Bills & Subscriptions</h2>
+            <button id="add-bill-btn" class="btn btn-small">+ Add Bill</button>
+          </div>
+          <form id="bill-form" class="hidden">
+            <input type="text" id="bill-name" placeholder="Bill name (e.g. Electric)" maxlength="50" required>
+            <div class="input-group">
+              <span class="input-prefix">$</span>
+              <input type="number" id="bill-amount" placeholder="Amount" min="0.01" step="0.01" required>
+            </div>
+            <div class="bill-options">
+              <div>
+                <label class="input-label">Frequency</label>
+                <select id="bill-frequency" class="select-input">
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Every 3 months</option>
+                </select>
+              </div>
+              <div>
+                <label class="input-label">Priority</label>
+                <select id="bill-priority" class="select-input">
+                  <option value="high">High</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-small">Add Bill</button>
+              <button type="button" id="cancel-bill" class="btn btn-secondary btn-small">Cancel</button>
+            </div>
+          </form>
+
+          <div id="bills-summary" class="bills-summary hidden">
+            <div class="income-row">
+              <span class="label">Monthly Bills Total</span>
+              <span id="bills-monthly-total" class="value">$0.00</span>
+            </div>
+            <div class="income-row">
+              <span class="label">Due This Cycle</span>
+              <span id="bills-cycle-total" class="value locked-value">$0.00</span>
+            </div>
+          </div>
+
+          <div id="bills-high-section" class="hidden">
+            <h3 class="priority-label high-priority">High Priority</h3>
+            <div id="bills-high-list"></div>
+          </div>
+          <div id="bills-low-section" class="hidden">
+            <h3 class="priority-label low-priority">Low Priority</h3>
+            <div id="bills-low-list"></div>
+          </div>
+
+          <p id="no-bills" class="hint">No bills added yet. Add your recurring bills to track them.</p>
+        </section>
+      </div>
+
+      <!-- ==================== SAVINGS TAB ==================== -->
+      <div id="tab-savings" class="tab-content hidden">
+        <section class="card">
+          <div class="goals-header">
+            <h2>Savings Goals</h2>
+            <button id="toggle-goal-form" class="btn btn-small">+ Add Goal</button>
+          </div>
+          <form id="goal-form" class="hidden">
+            <input type="text" id="goal-name" placeholder="Goal name (e.g. New Car)" maxlength="50" required>
+            <div class="input-group">
+              <span class="input-prefix">$</span>
+              <input type="number" id="goal-amount" placeholder="Target amount" min="0.01" step="0.01" required>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-small">Save Goal</button>
+              <button type="button" id="cancel-goal" class="btn btn-secondary btn-small">Cancel</button>
+            </div>
+          </form>
+          <div id="goals-list" class="goals-grid"></div>
+          <p id="no-goals" class="hint">No goals yet. Set one to start saving with purpose.</p>
+        </section>
+
+        <!-- Deposit into goal -->
+        <section id="deposit-section" class="card hidden">
+          <h2>Deposit into Goal</h2>
+          <p class="hint">Move money from your Savings budget into a specific goal — like a piggy bank.</p>
+          <form id="deposit-form">
+            <select id="deposit-goal-select" class="select-input" required>
+              <option value="">Choose a goal...</option>
+            </select>
+            <div class="input-group">
+              <span class="input-prefix">$</span>
+              <input type="number" id="deposit-amount" placeholder="Amount to deposit" min="0.01" step="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Deposit</button>
+          </form>
+        </section>
+
+        <!-- Savings Calculator -->
+        <section class="card">
+          <div class="goals-header">
+            <h2>Savings Calculator</h2>
+            <button id="open-calculator" class="btn btn-small">Open</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- App Footer -->
+      <div class="app-footer">
+        <button id="reset-app-btn" class="btn-ghost">Reset App & Start Over</button>
+      </div>
+    </div>
+
+    <!-- ==================== CALCULATOR MODAL ==================== -->
+    <div id="calc-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Savings Calculator</h2>
+          <button id="close-calc-modal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="calc-form">
+            <input type="text" id="calc-item-name" placeholder="What are you saving for?" maxlength="50" required>
+            <div class="input-group">
+              <span class="input-prefix">$</span>
+              <input type="number" id="calc-target" placeholder="Total cost" min="0.01" step="0.01" required>
+            </div>
+            <label class="input-label">How much per paycheck?</label>
+            <div class="input-group">
+              <span class="input-prefix">$</span>
+              <input type="number" id="calc-per-cycle" placeholder="Amount per cycle" min="0.01" step="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Calculate</button>
+          </form>
+
+          <div id="calc-comparison" class="hidden">
+            <h3 id="calc-result-title"></h3>
+            <div class="calc-comparison-grid">
+              <div class="calc-column">
+                <div class="calc-column-header">Before</div>
+                <div id="calc-before" class="calc-column-body"></div>
+              </div>
+              <div class="calc-arrow">&#10132;</div>
+              <div class="calc-column">
+                <div class="calc-column-header">After</div>
+                <div id="calc-after" class="calc-column-body"></div>
+              </div>
+            </div>
+            <div id="calc-stats"></div>
+            <div id="calc-verdict"></div>
+            <button id="calc-apply-btn" class="btn btn-primary hidden">Apply as Goal (starts next paycheck)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== FALLBACK DEPOSIT MODAL ==================== -->
+    <div id="fallback-deposit-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Savings Budget Empty</h2>
+          <button id="close-fallback-modal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="fallback-deposit-text" class="hint"></p>
+          <div class="fallback-actions">
+            <button id="fallback-wants-btn" class="btn btn-primary">Take from Wants</button>
+            <button id="fallback-needs-btn" class="btn btn-secondary">Take from Needs</button>
+            <button id="fallback-cancel-btn" class="btn btn-secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== BONUS MONEY MODAL ==================== -->
+    <div id="bonus-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Add Extra Money</h2>
+          <button id="close-bonus-modal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="hint">Got extra cash? Choose where it goes.</p>
+          <form id="bonus-form">
+            <div class="input-group">
+              <span class="input-prefix">$</span>
+              <input type="number" id="bonus-amount" placeholder="0.00" min="0.01" step="0.01" required>
+            </div>
+            <label class="input-label">Where should it go?</label>
+            <div class="bonus-options">
+              <label class="radio-label">
+                <input type="radio" name="bonus-dest" value="lock">
+                <span class="radio-pill lock-pill">Lock it Away</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="bonus-dest" value="needs">
+                <span class="radio-pill needs-pill">Needs</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="bonus-dest" value="wants">
+                <span class="radio-pill wants-pill">Wants</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="bonus-dest" value="savings" checked>
+                <span class="radio-pill savings-pill">Savings</span>
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Money</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warning Banner -->
+    <div id="warning-banner" class="warning-banner">
+      <p id="warning-text"></p>
+      <button id="dismiss-warning" class="btn btn-small btn-dismiss">Dismiss</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
