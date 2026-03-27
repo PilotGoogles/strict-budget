@@ -29,6 +29,16 @@
         <button id="onboard-start-btn" class="btn btn-primary">Let's Set Up</button>
       </div>
 
+      <!-- Path Choice -->
+      <div id="onboard-path" class="onboarding-step hidden">
+        <h2>Where are you at?</h2>
+        <p class="hint">This helps us set up your budget correctly.</p>
+        <div class="path-buttons">
+          <button id="onboard-just-paid" class="btn btn-primary path-btn">I Just Got Paid</button>
+          <button id="onboard-waiting" class="btn btn-secondary path-btn">I'm Waiting for My Next Paycheck</button>
+        </div>
+      </div>
+
       <!-- Step 1: Bank Balance -->
       <div id="onboard-step1" class="onboarding-step hidden">
         <div class="step-dots">
@@ -71,10 +81,12 @@
           <div class="step-dot done"></div>
           <div class="step-dot active"></div>
         </div>
-        <h2>When do you get paid?</h2>
-        <p class="hint">Set your next payday. The app will remember your pay schedule from here.</p>
-        <label class="input-label">Next Payday</label>
-        <input type="date" id="onboard-payday">
+        <h2 id="onboard-step3-title">When do you get paid?</h2>
+        <p class="hint" id="onboard-step3-hint">Set your next payday. The app will remember your pay schedule from here.</p>
+        <div id="onboard-payday-group">
+          <label class="input-label">Next Payday</label>
+          <input type="date" id="onboard-payday">
+        </div>
         <label class="input-label">Paycheck Amount</label>
         <div class="input-group">
           <span class="input-prefix">$</span>

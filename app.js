@@ -34,6 +34,7 @@
       nextPayday: null,       // 'YYYY-MM-DD'
       totalLockedSavings: 0,
       _pendingCashIn: 0,
+      firstCycleStarted: false,
       cycle: {
         active: false, startDate: null, endDate: null,
         initialIncome: 0, lockPercent: 20, hiddenSavings: 0,
@@ -69,7 +70,8 @@
           bankBalance: p.bankBalance || 0,
           extraMoney: p.extraMoney || 0,
           payCycleDays: p.payCycleDays || 14,
-          nextPayday: p.nextPayday || null
+          nextPayday: p.nextPayday || null,
+          firstCycleStarted: p.firstCycleStarted || (p.history && p.history.length > 0) || (p.cycle && p.cycle.active) || false
         };
       }
     } catch (e) { console.warn('Load failed:', e); }
@@ -85,6 +87,7 @@
   let currentTab = 'main';
   let pendingFallbackDeposit = null;
   let clockInterval = null;
+  let onboardPath = null; // 'just-paid' or 'waiting'
 
   // --- Onboarding ---
   function showOnboarding() {
@@ -101,7 +104,7 @@
   }
 
   function showOnboardStep(stepId) {
-    ['onboard-welcome','onboard-step1','onboard-step2','onboard-step3','onboard-step4'].forEach(id => {
+    ['onboard-welcome','onboard-path','onboard-step1','onboard-step2','onboard-step3','onboard-step4'].forEach(id => {
       document.getElementById(id).classList.add('hidden');
     });
     document.getElementById(stepId).classList.remove('hidden');
@@ -131,27 +134,45 @@
     const lockPct = parseInt(document.getElementById('onboard-lock-slider').value);
     const locked = roundCents(income * lockPct / 100);
     const spendable = roundCents(income - locked);
-    const dailyNow = days > 0 ? roundCents(total / days) : total;
+    const totalSpendable = onboardPath === 'waiting' ? roundCents(spendable + total) : roundCents(spendable + extra);
 
     const rec = document.getElementById('onboard-recommendation');
-    rec.innerHTML = `
-      <div class="onboard-summary">
-        <div class="onboard-row"><span class="label">Bank Balance</span><span class="value">${formatCurrency(bank)}</span></div>
-        <div class="onboard-row"><span class="label">Extra Money</span><span class="value">${formatCurrency(extra)}</span></div>
-        <div class="onboard-row"><span class="label">Total Available</span><span class="value green">${formatCurrency(total)}</span></div>
-        <div class="onboard-row"><span class="label">Days to Payday</span><span class="value amber">${days} days</span></div>
-        ${days > 0 ? `<div class="onboard-row"><span class="label">Daily Budget Until Then</span><span class="value rose">${formatCurrency(dailyNow)}/day</span></div>` : ''}
-        <div class="onboard-row" style="border-top:2px solid var(--border);margin-top:0.25rem;padding-top:0.5rem"><span class="label">Paycheck</span><span class="value">${formatCurrency(income)}</span></div>
-        <div class="onboard-row"><span class="label">Locked Away (${lockPct}%)</span><span class="value amber">${formatCurrency(locked)}</span></div>
-        <div class="onboard-row"><span class="label">Spendable per Cycle</span><span class="value green">${formatCurrency(spendable)}</span></div>
-      </div>
-      <div class="onboard-recommendation-text">
-        ${days > 0
-          ? `You have <strong>${formatCurrency(total)}</strong> to last you <strong>${days} days</strong> until payday. That's <strong>${formatCurrency(dailyNow)}/day</strong>. Be strict with yourself until then. Once your paycheck comes in, the full cycle begins.`
-          : `It's payday! Your cycle will start now with <strong>${formatCurrency(spendable)}</strong> spendable and <strong>${formatCurrency(locked)}</strong> locked away.`
-        }
-      </div>
-    `;
+
+    if (onboardPath === 'just-paid') {
+      // Simple summary for just-paid path
+      rec.innerHTML = `
+        <div class="onboard-summary">
+          <div class="onboard-row"><span class="label">Paycheck</span><span class="value">${formatCurrency(income)}</span></div>
+          ${extra > 0 ? `<div class="onboard-row"><span class="label">Extra Money</span><span class="value">${formatCurrency(extra)}</span></div>` : ''}
+          <div class="onboard-row"><span class="label">Locked Away (${lockPct}%)</span><span class="value amber">${formatCurrency(locked)}</span></div>
+          <div class="onboard-row"><span class="label">Spendable</span><span class="value green">${formatCurrency(totalSpendable)}</span></div>
+        </div>
+        <div class="onboard-recommendation-text">
+          Your cycle starts now. <strong>${formatCurrency(locked)}</strong> is locked away as if it doesn't exist. You have <strong>${formatCurrency(totalSpendable)}</strong> to work with.
+        </div>
+      `;
+    } else {
+      // Waiting path — show bank info and daily budget
+      const dailyNow = days > 0 ? roundCents(total / days) : total;
+      rec.innerHTML = `
+        <div class="onboard-summary">
+          <div class="onboard-row"><span class="label">Bank Balance</span><span class="value">${formatCurrency(bank)}</span></div>
+          ${extra > 0 ? `<div class="onboard-row"><span class="label">Extra Money</span><span class="value">${formatCurrency(extra)}</span></div>` : ''}
+          <div class="onboard-row"><span class="label">Money You Have Now</span><span class="value green">${formatCurrency(total)}</span></div>
+          <div class="onboard-row"><span class="label">Days to Payday</span><span class="value amber">${days} days</span></div>
+          ${days > 0 ? `<div class="onboard-row"><span class="label">Daily Budget Until Then</span><span class="value rose">${formatCurrency(dailyNow)}/day</span></div>` : ''}
+          <div class="onboard-row" style="border-top:2px solid var(--border);margin-top:0.25rem;padding-top:0.5rem"><span class="label">Paycheck</span><span class="value">${formatCurrency(income)}</span></div>
+          <div class="onboard-row"><span class="label">Locked Away (${lockPct}%)</span><span class="value amber">${formatCurrency(locked)}</span></div>
+          <div class="onboard-row"><span class="label">Spendable per Cycle</span><span class="value green">${formatCurrency(totalSpendable)}</span></div>
+        </div>
+        <div class="onboard-recommendation-text">
+          ${days > 0
+            ? `You have <strong>${formatCurrency(total)}</strong> to last you <strong>${days} days</strong> until payday. That's <strong>${formatCurrency(dailyNow)}/day</strong>. Be strict with yourself until then. Once your paycheck comes in, your <strong>${formatCurrency(total)}</strong> gets added to your spendable budget.`
+            : `It's payday! Your cycle will start now with <strong>${formatCurrency(totalSpendable)}</strong> spendable and <strong>${formatCurrency(locked)}</strong> locked away.`
+          }
+        </div>
+      `;
+    }
   }
 
   function completeOnboarding() {
@@ -159,10 +180,14 @@
     saveState();
     hideOnboarding();
 
-    const days = state.nextPayday ? daysUntil(state.nextPayday) : 0;
-    if (days <= 0) {
-      // It's payday or past — start cycle immediately
+    if (onboardPath === 'just-paid') {
+      // Just got paid — start cycle immediately
       startCycle(state.biWeeklyIncome, state.lockPercent);
+    } else {
+      const days = state.nextPayday ? daysUntil(state.nextPayday) : 0;
+      if (days <= 0) {
+        startCycle(state.biWeeklyIncome, state.lockPercent);
+      }
     }
     render();
     startClock();
@@ -233,8 +258,18 @@
   function startCycle(income, lockPct) {
     state.biWeeklyIncome = income;
     state.lockPercent = lockPct;
+
     const locked = roundCents(income * lockPct / 100);
     let spendable = roundCents(income - locked);
+
+    // On the very first cycle, add existing bank+extra to spendable (not locked)
+    if (!state.firstCycleStarted) {
+      if (state.bankBalance > 0 || state.extraMoney > 0) {
+        const existingMoney = roundCents(state.bankBalance + state.extraMoney);
+        spendable = roundCents(spendable + existingMoney);
+      }
+      state.firstCycleStarted = true;
+    }
 
     // Apply any pending cash-in from previous cycle
     if (state._pendingCashIn > 0) {
@@ -401,12 +436,22 @@
   // --- Bonus Money ---
   function addBonusMoney(amount, destination) {
     if (!state.cycle.active) return;
+    const c = state.cycle;
     if (destination === 'lock') {
-      state.cycle.hiddenSavings = roundCents(state.cycle.hiddenSavings + amount);
+      c.hiddenSavings = roundCents(c.hiddenSavings + amount);
     } else {
-      state.cycle.spendableBalance = roundCents(state.cycle.spendableBalance + amount);
-      state.cycle.categoryBudgets[destination] = roundCents(state.cycle.categoryBudgets[destination] + amount);
+      c.spendableBalance = roundCents(c.spendableBalance + amount);
+      c.categoryBudgets[destination] = roundCents(c.categoryBudgets[destination] + amount);
     }
+    // Add to expense log as income entry
+    c.expenses.unshift({
+      id: generateId(),
+      amount: roundCents(amount),
+      description: destination === 'lock' ? 'Extra Money (Locked)' : 'Extra Money',
+      category: destination === 'lock' ? 'locked' : destination,
+      date: new Date().toISOString(),
+      isIncome: true
+    });
     saveState(); render();
   }
 
@@ -867,9 +912,11 @@
     if (!exps.length) { list.innerHTML = ''; noExp.classList.remove('hidden'); return; }
     noExp.classList.add('hidden');
     list.innerHTML = exps.map(function(e) {
-      var catClass = e.billId ? 'bill' : e.category;
-      var catLabel = e.billId ? 'bill' : e.category;
-      return '<div class="expense-item"><div class="expense-info"><div class="expense-desc">' + sanitize(e.description) + '</div><div class="expense-meta"><span>' + formatDate(e.date) + '</span><span class="expense-cat-tag ' + catClass + '">' + catLabel + '</span></div></div><span class="expense-amount">-' + formatCurrency(e.amount) + '</span><button class="expense-delete" data-action="delete-expense" data-id="' + e.id + '">&times;</button></div>';
+      var catClass = e.billId ? 'bill' : (e.isIncome ? 'income' : e.category);
+      var catLabel = e.billId ? 'bill' : (e.isIncome ? 'income' : e.category);
+      var amtSign = e.isIncome ? '+' : '-';
+      var amtClass = e.isIncome ? 'expense-amount income' : 'expense-amount';
+      return '<div class="expense-item"><div class="expense-info"><div class="expense-desc">' + sanitize(e.description) + '</div><div class="expense-meta"><span>' + formatDate(e.date) + '</span><span class="expense-cat-tag ' + catClass + '">' + catLabel + '</span></div></div><span class="' + amtClass + '">' + amtSign + formatCurrency(e.amount) + '</span>' + (e.isIncome ? '' : '<button class="expense-delete" data-action="delete-expense" data-id="' + e.id + '">&times;</button>') + '</div>';
     }).join('');
   }
 
@@ -1092,6 +1139,26 @@
   function setupEventListeners() {
     // === ONBOARDING EVENTS ===
     document.getElementById('onboard-start-btn').addEventListener('click', function () {
+      showOnboardStep('onboard-path');
+    });
+
+    // Path choice
+    document.getElementById('onboard-just-paid').addEventListener('click', function () {
+      onboardPath = 'just-paid';
+      state.bankBalance = 0;
+      // Show paycheck step with payday hidden
+      document.getElementById('onboard-payday-group').classList.add('hidden');
+      document.getElementById('onboard-step3-title').textContent = 'How much is your paycheck?';
+      document.getElementById('onboard-step3-hint').textContent = 'Enter your paycheck amount. The app will lock away a portion and budget the rest.';
+      showOnboardStep('onboard-step3');
+    });
+
+    document.getElementById('onboard-waiting').addEventListener('click', function () {
+      onboardPath = 'waiting';
+      // Show bank balance step (normal flow)
+      document.getElementById('onboard-payday-group').classList.remove('hidden');
+      document.getElementById('onboard-step3-title').textContent = 'When do you get paid?';
+      document.getElementById('onboard-step3-hint').textContent = 'Set your next payday. The app will remember your pay schedule from here.';
       showOnboardStep('onboard-step1');
     });
 
@@ -1106,31 +1173,51 @@
       var val = parseFloat(document.getElementById('onboard-extra').value);
       if (isNaN(val) || val < 0) val = 0;
       state.extraMoney = roundCents(val);
-      showOnboardStep('onboard-step3');
-      // Set min date
-      document.getElementById('onboard-payday').min = today();
+      if (onboardPath === 'just-paid') {
+        // Just paid: skip to lock recommendation
+        var income = state.biWeeklyIncome;
+        var rec = computeRecommendedLock(0, state.extraMoney, 0, income);
+        document.getElementById('onboard-lock-slider').value = rec;
+        document.getElementById('onboard-lock-display').textContent = rec + '%';
+        state.lockPercent = rec;
+        showOnboardStep('onboard-step4');
+        renderOnboardRecommendation();
+      } else {
+        // Waiting: go to payday step
+        showOnboardStep('onboard-step3');
+        document.getElementById('onboard-payday').min = today();
+      }
     });
 
     document.getElementById('onboard-next3').addEventListener('click', function () {
-      var payday = document.getElementById('onboard-payday').value;
       var income = parseFloat(document.getElementById('onboard-income').value);
       var freq = parseInt(document.getElementById('onboard-frequency').value);
-      if (!payday || isNaN(income) || income <= 0) {
-        alert('Please fill in your next payday and paycheck amount.');
+      if (isNaN(income) || income <= 0) {
+        alert('Please fill in your paycheck amount.');
         return;
       }
-      state.nextPayday = payday;
       state.biWeeklyIncome = roundCents(income);
       state.payCycleDays = freq;
 
-      // Compute recommended lock %
-      var rec = computeRecommendedLock(state.bankBalance, state.extraMoney, daysUntil(payday), income);
-      document.getElementById('onboard-lock-slider').value = rec;
-      document.getElementById('onboard-lock-display').textContent = rec + '%';
-      state.lockPercent = rec;
-
-      showOnboardStep('onboard-step4');
-      renderOnboardRecommendation();
+      if (onboardPath === 'just-paid') {
+        // Just paid: skip payday, go to extra money
+        state.nextPayday = today();
+        showOnboardStep('onboard-step2');
+      } else {
+        // Waiting: validate payday
+        var payday = document.getElementById('onboard-payday').value;
+        if (!payday) {
+          alert('Please select your next payday.');
+          return;
+        }
+        state.nextPayday = payday;
+        var rec = computeRecommendedLock(state.bankBalance, state.extraMoney, daysUntil(payday), income);
+        document.getElementById('onboard-lock-slider').value = rec;
+        document.getElementById('onboard-lock-display').textContent = rec + '%';
+        state.lockPercent = rec;
+        showOnboardStep('onboard-step4');
+        renderOnboardRecommendation();
+      }
     });
 
     document.getElementById('onboard-lock-slider').addEventListener('input', function () {
