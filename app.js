@@ -13,7 +13,11 @@
   function formatDate(iso) { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
   function formatDateLong(iso) { return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); }
   function formatDateFull(date) { return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); }
-  function daysBetween(a, b) { return Math.ceil((new Date(b) - new Date(a)) / 86400000); }
+  function daysBetween(a, b) {
+    var da = new Date(a); da.setHours(0,0,0,0);
+    var db = new Date(b); db.setHours(0,0,0,0);
+    return Math.round((db - da) / 86400000);
+  }
   function toDateString(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
   function today() { return toDateString(new Date()); }
   function daysUntil(dateStr) {
