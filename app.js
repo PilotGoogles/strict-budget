@@ -575,6 +575,19 @@
     return roundCents(total);
   }
 
+  function getUnpaidBillsDueThisCycle() {
+    // Bills due this cycle that haven't been paid yet
+    const due = getBillsDueThisCycle();
+    if (!state.cycle.active) return due;
+    return due.filter(function(b) {
+      return !state.cycle.billsPaidThisCycle.includes(b.id);
+    });
+  }
+
+  function getUnpaidBillsTotal() {
+    return roundCents(getUnpaidBillsDueThisCycle().reduce(function(s, b) { return s + b.amount; }, 0));
+  }
+
   // --- Goals ---
   function addGoal(name, targetAmount) {
     state.goals.push({ id: generateId(), name: name.trim(), targetAmount: roundCents(targetAmount), savedAmount: 0 });
@@ -707,8 +720,8 @@
     const savingsBudget = roundCents(spendable * BUDGET_SPLIT.savings);
     const wantsBudget = roundCents(spendable * BUDGET_SPLIT.wants);
     const needsBudget = roundCents(spendable * BUDGET_SPLIT.needs);
-    const monthlyBills = getMonthlyBillsTotal();
-    const billsPerCycle = roundCents(monthlyBills / 2);
+    const unpaidBills = getUnpaidBillsTotal();
+    const billsPerCycle = unpaidBills;
 
     const cyclesNeeded = Math.ceil(targetAmount / perCycle);
     const monthsNeeded = Math.round((cyclesNeeded * 2) / 4.33 * 10) / 10;
@@ -749,7 +762,7 @@
     return {
       cyclesNeeded, monthsNeeded, perCycle,
       remainingAfter,
-      spendable, locked, income, billsPerCycle, monthlyBills,
+      spendable, locked, income, billsPerCycle,
       savingsBudget, wantsBudget, needsBudget,
       afterSavings, afterWants, afterNeeds,
       pullsFrom, severity
@@ -1128,14 +1141,14 @@
       '<div class="calc-row"><span class="label">Needs</span><span class="value val-neutral">' + formatCurrency(r.needsBudget) + '</span></div>' +
       '<div class="calc-row"><span class="label">Wants</span><span class="value val-neutral">' + formatCurrency(r.wantsBudget) + '</span></div>' +
       '<div class="calc-row"><span class="label">Savings</span><span class="value val-neutral">' + formatCurrency(r.savingsBudget) + '</span></div>' +
-      (r.billsPerCycle > 0 ? '<div class="calc-row"><span class="label">Bills</span><span class="value val-neutral">' + formatCurrency(r.billsPerCycle) + '</span></div>' : '') +
+      (r.billsPerCycle > 0 ? '<div class="calc-row"><span class="label">Unpaid Bills</span><span class="value val-neutral">' + formatCurrency(r.billsPerCycle) + '</span></div>' : '') +
       '<div class="calc-row" style="border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem"><span class="label">Free</span><span class="value">' + formatCurrency(r.spendable) + '</span></div>';
 
     document.getElementById('calc-after').innerHTML =
       '<div class="calc-row"><span class="label">Needs</span><span class="value ' + (r.afterNeeds < r.needsBudget ? valClass : 'val-neutral') + '">' + formatCurrency(Math.max(0, r.afterNeeds)) + '</span></div>' +
       '<div class="calc-row"><span class="label">Wants</span><span class="value ' + (r.afterWants < r.wantsBudget ? valClass : 'val-neutral') + '">' + formatCurrency(Math.max(0, r.afterWants)) + '</span></div>' +
       '<div class="calc-row"><span class="label">Savings</span><span class="value ' + (r.afterSavings < r.savingsBudget ? valClass : 'val-neutral') + '">' + formatCurrency(Math.max(0, r.afterSavings)) + '</span></div>' +
-      (r.billsPerCycle > 0 ? '<div class="calc-row"><span class="label">Bills</span><span class="value val-neutral">' + formatCurrency(r.billsPerCycle) + '</span></div>' : '') +
+      (r.billsPerCycle > 0 ? '<div class="calc-row"><span class="label">Unpaid Bills</span><span class="value val-neutral">' + formatCurrency(r.billsPerCycle) + '</span></div>' : '') +
       '<div class="calc-row" style="border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.25rem"><span class="label">Free</span><span class="value ' + valClass + '">' + formatCurrency(Math.max(0, r.remainingAfter)) + '</span></div>';
 
     document.getElementById('calc-stats').innerHTML =
