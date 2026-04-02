@@ -180,6 +180,10 @@
               <button type="button" id="cancel-edit-income" class="btn btn-secondary btn-small">Cancel</button>
             </div>
           </form>
+          <div class="settings-actions">
+            <button id="view-total-btn" class="btn btn-small btn-secondary">View Total</button>
+            <button id="catchup-btn" class="btn btn-small btn-secondary">Catch Up</button>
+          </div>
         </section>
 
         <!-- Pre-Cycle View (waiting for payday) -->
@@ -550,19 +554,49 @@
                 <span class="radio-pill lock-pill">Lock it Away</span>
               </label>
               <label class="radio-label">
-                <input type="radio" name="bonus-dest" value="needs">
-                <span class="radio-pill needs-pill">Needs</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="bonus-dest" value="wants">
-                <span class="radio-pill wants-pill">Wants</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="bonus-dest" value="savings" checked>
-                <span class="radio-pill savings-pill">Savings</span>
+                <input type="radio" name="bonus-dest" value="budget" checked>
+                <span class="radio-pill savings-pill">Add to Budget (50/30/20)</span>
               </label>
             </div>
             <button type="submit" class="btn btn-primary">Add Money</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VIEW TOTAL MODAL ==================== -->
+    <div id="total-money-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Total Money</h2>
+          <button id="close-total-modal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="total-money-breakdown"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== CATCH UP MODAL ==================== -->
+    <div id="catchup-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Catch Up</h2>
+          <button id="close-catchup-modal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="hint">Enter your actual bank balance right now. The app will redistribute it using your current lock % and 50/30/20 split.</p>
+          <form id="catchup-form">
+            <label class="input-label">What's in your bank?</label>
+            <div class="input-group">
+              <span class="input-prefix">$</span>
+              <input type="number" id="catchup-amount" placeholder="0.00" min="0.01" step="0.01" required>
+            </div>
+            <div id="catchup-preview" class="catchup-preview hidden"></div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Confirm</button>
+              <button type="button" id="cancel-catchup" class="btn btn-secondary">Cancel</button>
+            </div>
           </form>
         </div>
       </div>

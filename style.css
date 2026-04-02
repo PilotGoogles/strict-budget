@@ -225,6 +225,15 @@ body {
   margin-bottom: 0.75rem;
 }
 .settings-header h2, .goals-header h2 { margin-bottom: 0; }
+.settings-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.settings-actions .btn { flex: 1; }
+.total-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(81,96,104,0.3); }
+.total-row .label { font-size: 0.85rem; color: var(--text-secondary); }
+.total-row .value { font-size: 0.95rem; font-weight: 700; }
+.total-grand { border-bottom: none; border-top: 2px solid var(--border); margin-top: 0.25rem; padding-top: 0.75rem; }
+.total-grand .label { font-size: 1rem; color: var(--text-primary); font-weight: 700; }
+.total-grand .value { font-size: 1.1rem; color: var(--accent-green); }
+.catchup-preview { margin: 0.75rem 0; padding: 0.75rem; background: var(--bg-input); border-radius: var(--radius-sm); }
 .income-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; }
 .income-row .label { font-size: 0.85rem; color: var(--text-secondary); }
 .income-row .value { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }

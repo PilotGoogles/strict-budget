@@ -444,19 +444,74 @@
     if (destination === 'lock') {
       c.hiddenSavings = roundCents(c.hiddenSavings + amount);
     } else {
+      // Distribute across 50/30/20
       c.spendableBalance = roundCents(c.spendableBalance + amount);
-      c.categoryBudgets[destination] = roundCents(c.categoryBudgets[destination] + amount);
+      c.categoryBudgets.needs = roundCents(c.categoryBudgets.needs + amount * BUDGET_SPLIT.needs);
+      c.categoryBudgets.wants = roundCents(c.categoryBudgets.wants + amount * BUDGET_SPLIT.wants);
+      c.categoryBudgets.savings = roundCents(c.categoryBudgets.savings + amount * BUDGET_SPLIT.savings);
     }
     // Add to expense log as income entry
     c.expenses.unshift({
       id: generateId(),
       amount: roundCents(amount),
-      description: destination === 'lock' ? 'Extra Money (Locked)' : 'Extra Money',
-      category: destination === 'lock' ? 'locked' : destination,
+      description: destination === 'lock' ? 'Extra Money (Locked)' : 'Extra Money (50/30/20)',
+      category: destination === 'lock' ? 'locked' : 'income',
       date: new Date().toISOString(),
       isIncome: true
     });
     saveState(); render();
+  }
+
+  // --- View Total Money ---
+  function showTotalMoneyModal() {
+    const c = state.cycle;
+    const spendable = c.active ? c.spendableBalance : 0;
+    const lockedThisCycle = c.active ? c.hiddenSavings : 0;
+    const vaultTotal = state.totalLockedSavings + lockedThisCycle;
+    const piggyTotal = state.goals.reduce(function(sum, g) { return roundCents(sum + g.savedAmount); }, 0);
+    const grandTotal = roundCents(spendable + vaultTotal + piggyTotal);
+
+    document.getElementById('total-money-breakdown').innerHTML =
+      '<div class="total-row"><span class="label">Spendable Balance</span><span class="value" style="color:var(--accent-green)">' + formatCurrency(spendable) + '</span></div>' +
+      '<div class="total-row"><span class="label">Locked This Cycle</span><span class="value" style="color:var(--accent-amber)">' + formatCurrency(lockedThisCycle) + '</span></div>' +
+      '<div class="total-row"><span class="label">Vault (All Cycles)</span><span class="value" style="color:var(--accent-amber)">' + formatCurrency(vaultTotal) + '</span></div>' +
+      '<div class="total-row"><span class="label">Piggy Bank (Goals)</span><span class="value" style="color:var(--accent-blue)">' + formatCurrency(piggyTotal) + '</span></div>' +
+      '<div class="total-row total-grand"><span class="label">Grand Total</span><span class="value">' + formatCurrency(grandTotal) + '</span></div>';
+
+    document.getElementById('total-money-modal').classList.remove('hidden');
+  }
+
+  // --- Catch Up ---
+  function catchUp(bankTotal) {
+    const c = state.cycle;
+    if (!c.active) return;
+    const lockPct = c.lockPercent;
+    const locked = roundCents(bankTotal * lockPct / 100);
+    const spendable = roundCents(bankTotal - locked);
+
+    c.hiddenSavings = locked;
+    c.spendableBalance = spendable;
+    c.initialIncome = bankTotal;
+    c.categoryBudgets = {
+      needs: roundCents(spendable * BUDGET_SPLIT.needs),
+      wants: roundCents(spendable * BUDGET_SPLIT.wants),
+      savings: roundCents(spendable * BUDGET_SPLIT.savings)
+    };
+    // Keep existing categorySpent — don't reset spending history
+    saveState(); render();
+  }
+
+  function showCatchUpPreview(amount) {
+    const lockPct = state.cycle.lockPercent;
+    const locked = roundCents(amount * lockPct / 100);
+    const spendable = roundCents(amount - locked);
+    const preview = document.getElementById('catchup-preview');
+    preview.classList.remove('hidden');
+    preview.innerHTML =
+      '<div class="total-row"><span class="label">Locked (' + lockPct + '%)</span><span class="value" style="color:var(--accent-amber)">' + formatCurrency(locked) + '</span></div>' +
+      '<div class="total-row"><span class="label">Needs (50%)</span><span class="value" style="color:var(--needs-color)">' + formatCurrency(roundCents(spendable * BUDGET_SPLIT.needs)) + '</span></div>' +
+      '<div class="total-row"><span class="label">Wants (30%)</span><span class="value" style="color:var(--wants-color)">' + formatCurrency(roundCents(spendable * BUDGET_SPLIT.wants)) + '</span></div>' +
+      '<div class="total-row"><span class="label">Savings (20%)</span><span class="value" style="color:var(--savings-color)">' + formatCurrency(roundCents(spendable * BUDGET_SPLIT.savings)) + '</span></div>';
   }
 
   // --- Bills ---
@@ -1454,6 +1509,43 @@
 
     // Dismiss warning
     document.getElementById('dismiss-warning').addEventListener('click', dismissWarning);
+
+    // View Total Money
+    document.getElementById('view-total-btn').addEventListener('click', showTotalMoneyModal);
+    document.getElementById('close-total-modal').addEventListener('click', function () {
+      document.getElementById('total-money-modal').classList.add('hidden');
+    });
+    document.getElementById('total-money-modal').addEventListener('click', function (e) {
+      if (e.target === this) this.classList.add('hidden');
+    });
+
+    // Catch Up
+    document.getElementById('catchup-btn').addEventListener('click', function () {
+      document.getElementById('catchup-amount').value = '';
+      document.getElementById('catchup-preview').classList.add('hidden');
+      document.getElementById('catchup-modal').classList.remove('hidden');
+    });
+    document.getElementById('close-catchup-modal').addEventListener('click', function () {
+      document.getElementById('catchup-modal').classList.add('hidden');
+    });
+    document.getElementById('cancel-catchup').addEventListener('click', function () {
+      document.getElementById('catchup-modal').classList.add('hidden');
+    });
+    document.getElementById('catchup-modal').addEventListener('click', function (e) {
+      if (e.target === this) this.classList.add('hidden');
+    });
+    document.getElementById('catchup-amount').addEventListener('input', function () {
+      var val = parseFloat(this.value);
+      if (!isNaN(val) && val > 0) showCatchUpPreview(roundCents(val));
+      else document.getElementById('catchup-preview').classList.add('hidden');
+    });
+    document.getElementById('catchup-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var amt = parseFloat(document.getElementById('catchup-amount').value);
+      if (isNaN(amt) || amt <= 0) return;
+      catchUp(roundCents(amt));
+      document.getElementById('catchup-modal').classList.add('hidden');
+    });
 
     // Reset app
     document.getElementById('reset-app-btn').addEventListener('click', resetApp);
