@@ -403,22 +403,46 @@
       showWarning('overspend', { attempted: amount, available: c.spendableBalance });
       return false;
     }
-    const catBudget = c.categoryBudgets[category];
-    const catSpent = c.categorySpent[category];
-    if (amount > roundCents(catBudget - catSpent)) {
-      showWarning('category-over', { category, attempted: amount, available: roundCents(catBudget - catSpent) });
-    }
     if (amount > c.spendableBalance * 0.5 && c.spendableBalance > 0) {
       showWarning('caution', { amount, remaining: c.spendableBalance });
     }
-    c.expenses.unshift({ id: generateId(), amount: roundCents(amount), description: description.trim(), category, date: new Date().toISOString() });
     c.spendableBalance = roundCents(c.spendableBalance - amount);
-    c.categorySpent[category] = roundCents(c.categorySpent[category] + amount);
+
+    // Cascade overflow silently across categories; record the distribution
+    const cascadeOrder = { wants: ['savings', 'needs'], needs: ['wants', 'savings'], savings: ['wants', 'needs'] };
+    const distribution = { needs: 0, wants: 0, savings: 0 };
+    const catRemaining = roundCents(c.categoryBudgets[category] - c.categorySpent[category]);
+    if (amount <= catRemaining) {
+      c.categorySpent[category] = roundCents(c.categorySpent[category] + amount);
+      distribution[category] = roundCents(amount);
+    } else {
+      // Fill this category to cap, cascade remainder
+      distribution[category] = catRemaining;
+      c.categorySpent[category] = c.categoryBudgets[category];
+      let overflow = roundCents(amount - catRemaining);
+      for (const target of cascadeOrder[category] || []) {
+        if (overflow <= 0) break;
+        const targetRemaining = roundCents(c.categoryBudgets[target] - c.categorySpent[target]);
+        const take = Math.min(targetRemaining, overflow);
+        if (take > 0) {
+          c.categorySpent[target] = roundCents(c.categorySpent[target] + take);
+          distribution[target] = roundCents(take);
+          overflow = roundCents(overflow - take);
+        }
+      }
+    }
+
+    c.expenses.unshift({ id: generateId(), amount: roundCents(amount), description: description.trim(), category, date: new Date().toISOString(), distribution });
+
     saveState(); render();
-    const origSpendable = roundCents(c.initialIncome - c.hiddenSavings);
-    if (c.spendableBalance < origSpendable * 0.2 && c.spendableBalance > 0) {
+
+    // Needs-based low-balance warning: once Wants is tapped out
+    const wantsRemaining = roundCents(c.categoryBudgets.wants - c.categorySpent.wants);
+    const needsRemaining = roundCents(c.categoryBudgets.needs - c.categorySpent.needs);
+    if (wantsRemaining <= 0 && needsRemaining > 0) {
       const dl = getDaysRemaining();
-      showWarning('low-balance', { remaining: c.spendableBalance, daysLeft: dl, perDay: dl > 0 ? roundCents(c.spendableBalance / dl) : 0 });
+      const perDay = dl > 0 ? roundCents(needsRemaining / dl) : needsRemaining;
+      showWarning('needs-budget', { needsRemaining, daysLeft: dl, perDay });
     }
     return true;
   }
@@ -429,7 +453,15 @@
     if (idx === -1) return;
     const exp = c.expenses[idx];
     c.spendableBalance = roundCents(c.spendableBalance + exp.amount);
-    c.categorySpent[exp.category] = roundCents(c.categorySpent[exp.category] - exp.amount);
+    if (exp.distribution) {
+      // Reverse cascade distribution
+      for (const cat in exp.distribution) {
+        c.categorySpent[cat] = roundCents(c.categorySpent[cat] - exp.distribution[cat]);
+      }
+    } else {
+      // Legacy expenses without distribution
+      c.categorySpent[exp.category] = roundCents(c.categorySpent[exp.category] - exp.amount);
+    }
     if (exp.billId) {
       c.billsPaidThisCycle = c.billsPaidThisCycle.filter(bid => bid !== exp.billId);
     }
@@ -789,6 +821,10 @@
         break;
       case 'category-over':
         text.innerHTML = 'You\'re over your <strong>' + data.category + '</strong> budget. ' + formatCurrency(data.available) + ' remaining but spending ' + formatCurrency(data.attempted) + '.';
+        banner.classList.add('caution');
+        break;
+      case 'needs-budget':
+        text.innerHTML = 'Wants is tapped out. You have <strong>' + formatCurrency(data.needsRemaining) + ' in Needs</strong> to last ' + data.daysLeft + ' day' + (data.daysLeft !== 1 ? 's' : '') + ' — that\'s <strong>' + formatCurrency(data.perDay) + '/day</strong> until payday. Be strict.';
         banner.classList.add('caution');
         break;
     }
